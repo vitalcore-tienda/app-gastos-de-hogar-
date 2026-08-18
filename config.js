@@ -4,10 +4,10 @@
 
 window.SUPABASE_CONFIG = {
   // URL de tu proyecto Supabase
-  URL: "https://TU-PROYECTO.supabase.co",
+  URL: "https://wiwxkajgnkuknqlxoqsw.supabase.co",
 
-  // Clave pública anónima de tu proyecto (anon public key)
-  ANON_KEY: "TU_CLAVE_ANON_PUBLICA_AQUI",
+  // Clave pública anónima de tu proyecto (anon / publishable key)
+  ANON_KEY: "sb_publishable_Nb1z26B4fj-qZifeEZqa9Q_p1LgZvSc",
 
   // Función de utilidad para obtener las credenciales activas
   getCredentials() {

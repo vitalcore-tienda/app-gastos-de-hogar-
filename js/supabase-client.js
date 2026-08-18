@@ -2,8 +2,8 @@
  * SUPABASE-CLIENT.JS - Cliente de Supabase, Autenticación y Gestión de Hogares
  */
 
-const SUPABASE_URL = "https://TU-PROYECTO.supabase.co";
-const SUPABASE_ANON_KEY = "TU_CLAVE_ANON_PUBLICA_AQUI";
+const SUPABASE_URL = "https://wiwxkajgnkuknqlxoqsw.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Nb1z26B4fj-qZifeEZqa9Q_p1LgZvSc";
 
 class SupabaseService {
   constructor() {
