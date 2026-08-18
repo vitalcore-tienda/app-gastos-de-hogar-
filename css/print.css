@@ -1,0 +1,111 @@
+/* ==========================================================================
+   HOJA DE ESTILOS PARA IMPRESIÓN (VISTA REFRIGERADOR / CARPETA FAMILIAR)
+   ========================================================================== */
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+  }
+
+  /* Ocultar elementos interactivos innecesarios en papel */
+  .main-header,
+  .main-tabs,
+  .panel-actions,
+  .search-bar-row,
+  .expenses-filter-row,
+  .modal-backdrop,
+  .toast-container,
+  .app-footer,
+  .btn-icon,
+  .theme-toggle,
+  .service-card-menu,
+  .btn-pay-action,
+  .btn-paid-status,
+  .btn-copy-code,
+  .btn,
+  .filter-group,
+  .chart-container,
+  .analytics-grid,
+  .calendar-wrapper {
+    display: none !important;
+  }
+
+  .app-layout {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Título de Impresión */
+  body::before {
+    content: "📋 RESUMEN DE SERVICIOS Y GASTOS DEL HOGAR";
+    display: block;
+    font-size: 18pt;
+    font-weight: 800;
+    text-align: center;
+    border-bottom: 2pt solid #000;
+    padding-bottom: 8pt;
+    margin-bottom: 15pt;
+  }
+
+  .tab-panel {
+    display: block !important;
+    page-break-inside: avoid;
+  }
+
+  .kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    border: 1pt solid #000;
+    border-radius: 4pt;
+    padding: 8pt;
+    margin-bottom: 15pt;
+  }
+
+  .kpi-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 4pt !important;
+  }
+
+  .kpi-icon-badge {
+    display: none !important;
+  }
+
+  .kpi-value {
+    font-size: 14pt !important;
+    color: #000 !important;
+  }
+
+  /* Tabla de Servicios para Papel */
+  .services-grid {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .service-card {
+    display: table-row !important;
+    border: 1pt solid #ccc !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  .service-card-body {
+    background: transparent !important;
+    padding: 4pt 0 !important;
+  }
+
+  .data-table {
+    border: 1pt solid #000 !important;
+  }
+
+  .data-table th, .data-table td {
+    border: 1pt solid #ccc !important;
+    color: #000 !important;
+    padding: 6pt !important;
+  }
+}
