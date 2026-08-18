@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Hogar - Servicios y Gastos</title>
+  <meta name="description" content="Aplicación sencilla y clara para organizar los servicios, impuestos y gastos del hogar para toda la familia.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js para visualización de finanzas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Supabase JS Client v2 Oficial -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+  <div class="app-layout">
+    
+    <!-- HEADER PRINCIPAL -->
+    <header class="main-header">
+      <div class="header-container">
+        <div class="brand-section">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1>Mi Hogar</h1>
+            <p>Servicios y Gastos Familiares</p>
+          </div>
+        </div>
+
+        <!-- BADGE DE HOGAR ACTIVO & CÓDIGO DE INVITACIÓN -->
+        <div class="household-header-pill" id="headerHouseholdBadge" style="display:none;">
+          <span class="house-icon">🏡</span>
+          <div class="house-info">
+            <div class="house-name-row">
+              <strong class="house-name" id="headerHouseName">Mi Hogar</strong>
+              <span class="live-indicator-pill" id="headerLiveIndicator" style="display:none;"><span class="live-dot"></span><span id="headerLiveText">En vivo</span></span>
+            </div>
+            <span class="house-code-label">Código: <strong id="headerInviteCodeTag">---</strong></span>
+          </div>
+          <button type="button" class="btn-pill-action" id="headerCopyInviteCodeBtn" title="Copiar código de invitación">📋</button>
+          <button type="button" class="btn-pill-action btn-pill-share" id="headerShareHouseBtn" title="Invitar familiares por WhatsApp">📱 Invitar</button>
+        </div>
+
+        <!-- Selector de Mes y Año -->
+        <div class="month-selector-wrapper">
+          <button id="prevMonthBtn" class="btn-icon" aria-label="Mes anterior" title="Mes anterior">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div class="current-month-display" id="currentMonthDisplay">
+            <span id="monthName">Agosto</span>
+            <span id="yearNumber">2026</span>
+          </div>
+          <button id="nextMonthBtn" class="btn-icon" aria-label="Mes siguiente" title="Mes siguiente">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+          <button id="currentMonthBtn" class="btn-today" title="Volver al mes actual">Hoy</button>
+        </div>
+
+        <!-- Acciones Rápidas del Encabezado -->
+        <div class="header-actions">
+          
+          <!-- WIDGET DE USUARIO / LOGIN / NUBE -->
+          <div class="user-auth-widget" id="userAuthWidget">
+            <button id="openAuthModalBtn" class="btn-header btn-auth-trigger" title="Iniciar sesión o conectar nube">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Ingresar / Nube</span>
+            </button>
+            <div class="user-profile-chip" id="userProfileChip" style="display:none;">
+              <span class="user-avatar" id="userAvatarInitial">U</span>
+              <span class="user-email-label" id="userEmailLabel">usuario</span>
+              <button type="button" class="btn-user-logout" id="logoutBtn" title="Cerrar Sesión">🚪</button>
+            </div>
+          </div>
+
+          <button id="calculatorBtn" class="btn-header btn-calculator" title="Calculadora y simulador de cuotas">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M8 10h.01"></path><path d="M12 10h.01"></path><path d="M16 10h.01"></path><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path></svg>
+            <span>Calculadora</span>
+          </button>
+
+          <button id="shareWhatsAppBtn" class="btn-header btn-whatsapp" title="Enviar resumen por WhatsApp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            <span>WhatsApp</span>
+          </button>
+          
+          <button id="printBtn" class="btn-header btn-secondary" title="Imprimir lista para la heladera">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            <span>Imprimir</span>
+          </button>
+
+          <button id="backupBtn" class="btn-header btn-secondary" title="Copia de seguridad y Excel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Datos</span>
+          </button>
+
+          <button id="themeToggleBtn" class="btn-icon theme-toggle" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema">
+            <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- BANNER DE ALERTA DE VENCIMIENTOS -->
+    <section class="alert-banner-container" id="alertBannerContainer">
+      <!-- Inyectado dinámicamente con alertas como: "⚠️ Tenés 2 servicios por vencer esta semana" -->
+    </section>
+
+    <!-- TARJETAS DE MÉTRICAS (KPIs) -->
+    <section class="kpi-grid">
+      <div class="kpi-card kpi-total">
+        <div class="kpi-icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">Total del Mes</span>
+          <h2 class="kpi-value" id="kpiTotalAmount">$0</h2>
+          <span class="kpi-subtitle" id="kpiTotalCount">0 gastos y servicios</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-paid">
+        <div class="kpi-icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">Ya Pagado</span>
+          <h2 class="kpi-value" id="kpiPaidAmount">$0</h2>
+          <span class="kpi-subtitle" id="kpiPaidCount">0 pagos realizados</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-pending">
+        <div class="kpi-icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">Pendiente por Pagar</span>
+          <h2 class="kpi-value" id="kpiPendingAmount">$0</h2>
+          <span class="kpi-subtitle" id="kpiPendingCount">0 por abonar</span>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-upcoming">
+        <div class="kpi-icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">Próximo Vencimiento</span>
+          <h3 class="kpi-next-title" id="kpiNextTitle">Sin vencimientos</h3>
+          <span class="kpi-subtitle" id="kpiNextDetail">Todo al día</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- WIDGET DE CONTROL DE PRESUPUESTO MENSUAL -->
+    <section class="budget-widget-card" id="budgetWidgetCard">
+      <div class="budget-widget-header">
+        <div class="budget-widget-title-group">
+          <div class="budget-icon-circle">🎯</div>
+          <div>
+            <div class="budget-header-top">
+              <h3>Presupuesto Mensual del Hogar</h3>
+              <span class="status-pill pill-paid" id="budgetStatusBadge">🟢 Saludable</span>
+            </div>
+            <p class="budget-subtitle">Meta máxima de gastos del mes (servicios, cuotas y compras cotidianas)</p>
+          </div>
+        </div>
+        <button id="openBudgetModalBtn" class="btn btn-secondary btn-budget-edit" title="Ajustar límite de presupuesto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          <span>Ajustar Meta</span>
+        </button>
+      </div>
+
+      <!-- Barra de Progreso del Presupuesto -->
+      <div class="budget-progress-box">
+        <div class="budget-progress-track">
+          <div class="budget-progress-fill" id="budgetProgressFill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Métricas del Presupuesto -->
+      <div class="budget-metrics-row">
+        <div class="budget-metric">
+          <span class="metric-caption">LÍMITE MENSUAL</span>
+          <strong class="metric-number text-main" id="budgetTotalLimit">$0</strong>
+        </div>
+        <div class="budget-metric">
+          <span class="metric-caption">TOTAL CONSUMIDO</span>
+          <strong class="metric-number text-purple" id="budgetConsumedAmount">$0 (0%)</strong>
+        </div>
+        <div class="budget-metric text-right">
+          <span class="metric-caption">ESTADO DEL SALDO</span>
+          <strong class="metric-number" id="budgetRemainingAmount">Disponible: $0</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- WIDGET DE LIQUIDACIÓN DE CUENTAS FAMILIARES (SPLITWISE) -->
+    <section id="settlementDashboardCard" class="settlement-widget-section">
+      <!-- Inyectado dinámicamente con balances y transferencias netas -->
+    </section>
+
+    <!-- NAVEGACIÓN POR PESTAÑAS -->
+    <nav class="main-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="services" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Servicios e Impuestos</span>
+        <span class="tab-badge" id="servicesPendingBadge">0</span>
+      </button>
+
+      <button class="tab-btn" data-tab="cards" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        <span>Tarjetas y Cuotas</span>
+        <span class="tab-badge tab-badge-purple" id="cardsPendingBadge">0</span>
+      </button>
+
+      <button class="tab-btn" data-tab="expenses" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        <span>Gastos Cotidianos</span>
+        <span class="tab-badge" id="expensesCountBadge">0</span>
+      </button>
+
+      <button class="tab-btn" data-tab="calendar" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        <span>Calendario del Mes</span>
+      </button>
+
+      <button class="tab-btn" data-tab="analytics" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+        <span>Resumen y Gráficos</span>
+      </button>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="tab-content-wrapper">
+      
+      <!-- TAB 1: SERVICIOS E IMPUESTOS RECURRENTES -->
+      <section id="tab-services" class="tab-panel active">
+        <div class="panel-header">
+          <div class="panel-title-area">
+            <h2>Servicios del Hogar</h2>
+            <p>Luz, gas, agua, internet, expensas y abonos del mes</p>
+          </div>
+          <div class="panel-actions">
+            <div class="filter-group">
+              <button class="filter-chip active" data-filter="all">Todos (<span id="countFilterAll">0</span>)</button>
+              <button class="filter-chip chip-pending" data-filter="pending">⏳ Pendientes (<span id="countFilterPending">0</span>)</button>
+              <button class="filter-chip chip-paid" data-filter="paid">✅ Pagados (<span id="countFilterPaid">0</span>)</button>
+            </div>
+            <button id="addServiceBtn" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Agregar Servicio</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de búsqueda rápida de servicios -->
+        <div class="search-bar-row">
+          <div class="search-input-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="searchServicesInput" placeholder="Buscar por nombre, proveedor o código de pago..." aria-label="Buscar servicios">
+          </div>
+          <div class="sort-wrapper">
+            <label for="sortServicesSelect">Ordenar:</label>
+            <select id="sortServicesSelect">
+              <option value="due-asc">Fecha de vencimiento (más próximo primero)</option>
+              <option value="due-desc">Fecha de vencimiento (más lejano primero)</option>
+              <option value="name-asc">Nombre A-Z</option>
+              <option value="amount-desc">Mayor importe</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Grid de tarjetas de servicios -->
+        <div class="services-grid" id="servicesGrid">
+          <!-- Tarjetas renderizadas dinámicamente -->
+        </div>
+
+        <!-- Estado vacío -->
+        <div class="empty-state hidden" id="servicesEmptyState">
+          <div class="empty-icon">🏠</div>
+          <h3>No hay servicios registrados</h3>
+          <p>Comienza agregando los servicios del hogar como Luz, Gas, Internet o Expensas.</p>
+          <button class="btn btn-primary btn-add-empty" onclick="document.getElementById('addServiceBtn').click()">+ Agregar Primer Servicio</button>
+        </div>
+      </section>
+
+      <!-- TAB 2: TARJETAS DE CRÉDITO Y CUOTAS -->
+      <section id="tab-cards" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-area">
+            <h2>Tarjetas de Crédito y Cuotas</h2>
+            <p>Control de compras en cuotas fijas, resúmenes bancarios y deuda futura</p>
+          </div>
+          <div class="panel-actions">
+            <div class="filter-group">
+              <button class="card-filter-chip active" data-card-filter="active">Activas este mes (<span id="cardsCountActive">0</span>)</button>
+              <button class="card-filter-chip" data-card-filter="all">Todas (<span id="cardsCountAll">0</span>)</button>
+              <button class="card-filter-chip" data-card-filter="finished">Finalizadas (<span id="cardsCountFinished">0</span>)</button>
+            </div>
+            <button id="addCardBtn" class="btn btn-primary btn-purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Agregar Compra en Cuotas</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tarjetas KPIs del módulo de tarjetas -->
+        <div class="cards-kpi-bar">
+          <div class="cards-kpi-item">
+            <span class="cards-kpi-label">Cuotas del Mes:</span>
+            <strong class="cards-kpi-value text-purple" id="cardsKpiMonthAmount">$0</strong>
+          </div>
+          <div class="cards-kpi-item">
+            <span class="cards-kpi-label">Ya Pagado en Resumen:</span>
+            <strong class="cards-kpi-value text-success" id="cardsKpiPaidAmount">$0</strong>
+          </div>
+          <div class="cards-kpi-item">
+            <span class="cards-kpi-label">Pendiente en Tarjetas:</span>
+            <strong class="cards-kpi-value text-warning" id="cardsKpiPendingAmount">$0</strong>
+          </div>
+          <div class="cards-kpi-item">
+            <span class="cards-kpi-label">Deuda Total Futura por Saldar:</span>
+            <strong class="cards-kpi-value text-muted" id="cardsKpiFutureDebt">$0</strong>
+          </div>
+        </div>
+
+        <!-- Filtros y Búsqueda de Tarjetas -->
+        <div class="search-bar-row">
+          <div class="search-input-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="searchCardsInput" placeholder="Buscar por producto, tarjeta o detalle..." aria-label="Buscar compras en cuotas">
+          </div>
+          <div class="sort-wrapper">
+            <label for="filterCardBrand">Filtrar Tarjeta:</label>
+            <select id="filterCardBrand">
+              <option value="all">💳 Todas las tarjetas</option>
+              <option value="Visa">💳 Visa</option>
+              <option value="Mastercard">💳 Mastercard</option>
+              <option value="Naranja">🍊 Naranja X</option>
+              <option value="Amex">💳 American Express</option>
+              <option value="Cabal">💳 Cabal</option>
+              <option value="Otra">📋 Otra Tarjeta</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Grid de tarjetas de crédito y compras -->
+        <div class="cards-grid" id="cardsGrid">
+          <!-- Tarjetas renderizadas dinámicamente -->
+        </div>
+
+        <!-- Estado vacío -->
+        <div class="empty-state hidden" id="cardsEmptyState">
+          <div class="empty-icon">💳</div>
+          <h3>No hay compras en cuotas registradas</h3>
+          <p>Anota compras grandes como electrodomésticos, indumentaria o pasajes en cuotas para saber exactamente cuánto pagarás cada mes.</p>
+          <button class="btn btn-primary btn-purple btn-add-empty" onclick="document.getElementById('addCardBtn').click()">+ Anotar Primera Compra</button>
+        </div>
+      </section>
+
+      <!-- TAB 3: GASTOS COTIDIANOS -->
+      <section id="tab-expenses" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-area">
+            <h2>Gastos Diarios del Hogar</h2>
+            <p>Supermercado, farmacia, mantenimiento y compras del día a día</p>
+          </div>
+          <div class="panel-actions">
+            <button id="addExpenseBtn" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Anotar Gasto</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Resumen rápido de gastos cotidianos -->
+        <div class="expense-summary-bar">
+          <div class="summary-item">
+            <span>Total Gastos Diarios:</span>
+            <strong id="expensesTotalSum">$0</strong>
+          </div>
+          <div class="summary-item">
+            <span>Cantidad de Registros:</span>
+            <strong id="expensesTotalCount">0</strong>
+          </div>
+          <div class="summary-categories-chips" id="expenseCategoriesSummary">
+            <!-- Chips con totales por categoría -->
+          </div>
+        </div>
+
+        <!-- Desglose de aportes por integrante del hogar -->
+        <div class="members-expenses-bar" id="membersExpensesBar">
+          <!-- Renderizado dinámicamente: aportes de cada integrante -->
+        </div>
+
+        <!-- Liquidación de Cuentas en Gastos -->
+        <div id="settlementExpensesCard" class="settlement-expenses-section">
+          <!-- Renderizado dinámicamente -->
+        </div>
+
+        <!-- Listado / Tabla de Gastos -->
+        <div class="expenses-table-container">
+          <div class="expenses-filter-row">
+            <div class="search-input-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="searchExpensesInput" placeholder="Buscar compra o detalle..." aria-label="Buscar gastos">
+            </div>
+            <div class="category-filter-wrapper">
+              <select id="filterExpenseCategory">
+                <option value="all">Todas las categorías</option>
+                <option value="Supermercado">🛒 Supermercado y Alimentos</option>
+                <option value="Farmacia">💊 Farmacia y Salud</option>
+                <option value="Mantenimiento">🔧 Mantenimiento y Arreglos</option>
+                <option value="Mascotas">🐾 Mascotas</option>
+                <option value="Transporte">🚗 Transporte y Nafta</option>
+                <option value="Otros">📦 Otros Gastos</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="expenses-list" id="expensesList">
+            <!-- Items de gastos renderizados dinámicamente -->
+          </div>
+
+          <div class="empty-state hidden" id="expensesEmptyState">
+            <div class="empty-icon">🛒</div>
+            <h3>No hay gastos anotados en este mes</h3>
+            <p>Registra las compras del supermercado, tickets de farmacia o compras para la casa.</p>
+            <button class="btn btn-primary btn-add-empty" onclick="document.getElementById('addExpenseBtn').click()">+ Anotar Primer Gasto</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: CALENDARIO -->
+      <section id="tab-calendar" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-area">
+            <h2>Calendario de Vencimientos</h2>
+            <p>Visualiza qué días caen las facturas para planificar los pagos con tiempo</p>
+          </div>
+          <div class="calendar-legend">
+            <span class="legend-item"><span class="dot dot-paid"></span> Pagado</span>
+            <span class="legend-item"><span class="dot dot-pending"></span> Por Vencer</span>
+            <span class="legend-item"><span class="dot dot-overdue"></span> Vencido</span>
+          </div>
+        </div>
+
+        <div class="calendar-wrapper">
+          <div class="calendar-grid-header">
+            <div>Dom</div>
+            <div>Lun</div>
+            <div>Mar</div>
+            <div>Mié</div>
+            <div>Jue</div>
+            <div>Vie</div>
+            <div>Sáb</div>
+          </div>
+          <div class="calendar-grid-days" id="calendarGridDays">
+            <!-- Celdas del calendario generadas dinámicamente -->
+          </div>
+        </div>
+
+        <!-- Detalle del día seleccionado -->
+        <div class="day-detail-card" id="calendarDayDetail">
+          <div class="day-detail-header">
+            <h4 id="calendarDetailTitle">Selecciona un día del calendario</h4>
+            <span id="calendarDetailSubtitle">Haz clic en cualquier día para ver sus pagos o gastos</span>
+          </div>
+          <div class="day-detail-items" id="calendarDetailItems">
+            <!-- Items del día seleccionado -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: ESTADÍSTICAS Y ANÁLISIS -->
+      <section id="tab-analytics" class="tab-panel">
+        <div class="panel-header">
+          <div class="panel-title-area">
+            <h2>Análisis de Gastos del Hogar</h2>
+            <p>Descubre en qué se distribuye el dinero de la casa mes a mes</p>
+          </div>
+        </div>
+
+        <div class="analytics-grid">
+          <!-- Gráfico por Categorías -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>Distribución por Categorías</h3>
+              <p>Proporción entre servicios e ítems del hogar</p>
+            </div>
+            <div class="chart-container">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Comparativa de Servicios vs Gastos Diarios -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3>Servicios Fijos vs. Gastos Variables</h3>
+              <p>Balance mensual del presupuesto</p>
+            </div>
+            <div class="chart-container">
+              <canvas id="splitChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla resumen detallada -->
+        <div class="breakdown-table-card">
+          <h3>Detalle Consolidado de Gastos</h3>
+          <div class="table-responsive">
+            <table class="data-table" id="analyticsBreakdownTable">
+              <thead>
+                <tr>
+                  <th>Categoría / Concepto</th>
+                  <th>Tipo</th>
+                  <th>Estado</th>
+                  <th>Monto</th>
+                  <th>% del Total</th>
+                </tr>
+              </thead>
+              <tbody id="analyticsTableBody">
+                <!-- Filas renderizadas dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER INFORMATIVO -->
+    <footer class="app-footer">
+      <p>💡 <strong>Consejo para la familia:</strong> Los datos se guardan de forma segura en este navegador. Puedes hacer una copia de seguridad o enviar el resumen por WhatsApp en cualquier momento.</p>
+    </footer>
+
+  </div>
+
+  <!-- ==================== MODALES ==================== -->
+
+  <!-- MODAL 1: AGREGAR / EDITAR SERVICIO RECURRENTE -->
+  <div class="modal-backdrop" id="serviceModal" role="dialog" aria-modal="true" aria-labelledby="serviceModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="serviceModalTitle">Agregar Servicio del Hogar</h3>
+        <button class="btn-close-modal" id="closeServiceModalBtn" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <form id="serviceForm" class="modal-form">
+        <input type="hidden" id="serviceId">
+        
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="serviceName">Nombre del Servicio *</label>
+            <input type="text" id="serviceName" placeholder="Ej: Luz, Gas, Internet, Expensas..." required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="serviceCategory">Categoría *</label>
+            <select id="serviceCategory" required>
+              <option value="Luz">⚡ Luz / Electricidad</option>
+              <option value="Gas">🔥 Gas Natural / Envasado</option>
+              <option value="Agua">💧 Agua Corriente</option>
+              <option value="Internet">🌐 Internet / TV / Cable</option>
+              <option value="Celular">📱 Celular / Telefonía</option>
+              <option value="Expensas">🏢 Expensas / Alquiler</option>
+              <option value="Impuestos">🏛️ Impuestos / ABL</option>
+              <option value="Seguros">🛡️ Seguros (Hogar/Auto)</option>
+              <option value="Streaming">🎬 Streaming / Suscripciones</option>
+              <option value="Otros">📋 Otro Servicio</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="serviceProvider">Empresa o Proveedor</label>
+            <input type="text" id="serviceProvider" placeholder="Ej: Edesur, Edenor, Metrogas, Telecom, AySA...">
+          </div>
+          <div class="form-group flex-1">
+            <label for="serviceDueDay">Día habitual de vencimiento (1 al 31) *</label>
+            <input type="number" id="serviceDueDay" min="1" max="31" placeholder="Ej: 10" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="serviceDefaultAmount">Importe habitual o estimado ($) *</label>
+            <input type="number" id="serviceDefaultAmount" min="0" step="0.01" placeholder="Ej: 12500" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="serviceClientCode">Nº de Cliente o Código de Pago</label>
+            <input type="text" id="serviceClientCode" placeholder="Ej: 100492819 / Link / Banelco">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="serviceNotes">Notas o Enlace de Pago</label>
+          <input type="text" id="serviceNotes" placeholder="Ej: Pago por HomeBanking > Mis Cuentas / Link directo / Débito en tarjeta Visa">
+        </div>
+
+        <div class="form-checkbox-row">
+          <label class="custom-checkbox">
+            <input type="checkbox" id="serviceAutoDebit">
+            <span class="checkbox-box"></span>
+            <span class="checkbox-text">
+              <strong>Se paga con Débito Automático</strong>
+              <small>(Se debita solo de la cuenta o tarjeta)</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelServiceBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="saveServiceBtn">Guardar Servicio</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: MARCAR COMO PAGADO -->
+  <div class="modal-backdrop" id="payModal" role="dialog" aria-modal="true" aria-labelledby="payModalTitle">
+    <div class="modal-content modal-compact">
+      <div class="modal-header">
+        <h3 id="payModalTitle">Registrar Pago de Servicio</h3>
+        <button class="btn-close-modal" id="closePayModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="payForm" class="modal-form">
+        <input type="hidden" id="payServiceId">
+
+        <div class="pay-service-banner" id="payServiceBanner">
+          <div class="pay-service-icon" id="payBannerIcon">⚡</div>
+          <div class="pay-service-info">
+            <h4 id="payBannerName">Luz - Edesur</h4>
+            <p id="payBannerDetail">Vence día 10</p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="payAmount">Monto Final Abonado ($) *</label>
+            <input type="number" id="payAmount" min="0" step="0.01" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="payDate">Fecha en que se pagó *</label>
+            <input type="date" id="payDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="payMethod">Forma de Pago</label>
+          <select id="payMethod" required>
+            <option value="Transferencia">📱 Transferencia / HomeBanking / MercadoPago</option>
+            <option value="Débito Automático">🔄 Débito Automático</option>
+            <option value="Tarjeta de Débito">💳 Tarjeta de Débito</option>
+            <option value="Tarjeta de Crédito">💳 Tarjeta de Crédito</option>
+            <option value="Efectivo">💵 Efectivo (Pago Fácil / Rapipago)</option>
+            <option value="Otro">📋 Otro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="payReceiptNote">Nº de Comprobante / Nota (opcional)</label>
+          <input type="text" id="payReceiptNote" placeholder="Ej: Op. #9284192 / Pagó papá con la de débito">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelPayBtn">Cancelar</button>
+          <button type="submit" class="btn btn-success">✅ Confirmar Pago</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: AGREGAR / EDITAR GASTO DIARIO -->
+  <div class="modal-backdrop" id="expenseModal" role="dialog" aria-modal="true" aria-labelledby="expenseModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="expenseModalTitle">Anotar Gasto del Hogar</h3>
+        <button class="btn-close-modal" id="closeExpenseModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="expenseForm" class="modal-form">
+        <input type="hidden" id="expenseId">
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="expenseTitle">Concepto o Compra *</label>
+            <input type="text" id="expenseTitle" placeholder="Ej: Compra Coto, Remedios abuelo, Arreglo canilla..." required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="expenseCategory">Categoría *</label>
+            <select id="expenseCategory" required>
+              <option value="Supermercado">🛒 Supermercado y Alimentos</option>
+              <option value="Farmacia">💊 Farmacia y Salud</option>
+              <option value="Comida / Delivery">🍔 Comida / Delivery / Salidas</option>
+              <option value="Mantenimiento">🔧 Mantenimiento y Arreglos</option>
+              <option value="Mascotas">🐾 Mascotas</option>
+              <option value="Transporte">🚗 Transporte y Nafta</option>
+              <option value="Indumentaria">👟 Ropa y Calzado</option>
+              <option value="Educación">📚 Educación / Librería</option>
+              <option value="Otros">📦 Otros Gastos</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="expenseAmount">Monto ($) *</label>
+            <input type="number" id="expenseAmount" min="0" step="0.01" placeholder="Ej: 8500" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="expenseDate">Fecha del Gasto *</label>
+            <input type="date" id="expenseDate" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="expensePaidBySelect">¿Quién lo pagó? *</label>
+            <select id="expensePaidBySelect">
+              <option value="Yo">👤 Yo</option>
+              <option value="Papá">👤 Papá</option>
+              <option value="Mamá">👤 Mamá</option>
+              <option value="custom">➕ Otro familiar / Personalizado...</option>
+            </select>
+            <input type="text" id="expensePaidByCustom" placeholder="Nombre..." style="display:none; margin-top: 0.35rem;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="expenseNotes">Notas adicionales</label>
+          <input type="text" id="expenseNotes" placeholder="Ej: Comprado en 3 cuotas / Ticket guardado en el cajón">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelExpenseBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Gasto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: COMPARTIR POR WHATSAPP -->
+  <div class="modal-backdrop" id="whatsappModal" role="dialog" aria-modal="true" aria-labelledby="whatsappModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="whatsappModalTitle">📲 Enviar Resumen por WhatsApp</h3>
+        <button class="btn-close-modal" id="closeWhatsAppModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="whatsapp-modal-body">
+        <p class="modal-subtitle">Este es el mensaje listo para enviar a tus papás o al grupo familiar:</p>
+        
+        <div class="whatsapp-preview-box" id="whatsappPreviewText">
+          <!-- Texto generado -->
+        </div>
+
+        <div class="whatsapp-actions-row">
+          <button id="copyWhatsAppTextBtn" class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copiar al Portapapeles</span>
+          </button>
+          <button id="openWhatsAppDirectBtn" class="btn btn-whatsapp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            <span>Abrir WhatsApp Web</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: COPIA DE SEGURIDAD / EXCEL -->
+  <div class="modal-backdrop" id="backupModal" role="dialog" aria-modal="true" aria-labelledby="backupModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="backupModalTitle">💾 Copias de Seguridad y Datos</h3>
+        <button class="btn-close-modal" id="closeBackupModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="backup-modal-body">
+        <div class="backup-card">
+          <div class="backup-card-info">
+            <h4>📊 Exportar a Excel (CSV)</h4>
+            <p>Descarga un archivo con todos los servicios y gastos del mes actual para abrir en Excel o Google Sheets.</p>
+          </div>
+          <button id="exportCsvBtn" class="btn btn-secondary">Descargar CSV</button>
+        </div>
+
+        <div class="backup-card">
+          <div class="backup-card-info">
+            <h4>📦 Copia de Seguridad Completa (JSON)</h4>
+            <p>Guarda todos los servicios, configuraciones e historial en un archivo para restaurar en otra computadora o celular.</p>
+          </div>
+          <button id="exportJsonBtn" class="btn btn-secondary">Guardar Copia</button>
+        </div>
+
+        <div class="backup-card">
+          <div class="backup-card-info">
+            <h4>📥 Restaurar Copia de Seguridad</h4>
+            <p>Carga un archivo de respaldo previo para recuperar tus datos.</p>
+          </div>
+          <label class="btn btn-secondary file-upload-btn">
+            <span>Cargar Archivo</span>
+            <input type="file" id="importJsonInput" accept=".json" style="display:none;">
+          </label>
+        </div>
+
+        <div class="backup-card border-warning">
+          <div class="backup-card-info">
+            <h4>🔄 Cargar Servicios de Ejemplo</h4>
+            <p>Si estás probando la app, puedes precargar servicios típicos (Luz, Gas, Agua, Internet, Expensas).</p>
+          </div>
+          <button id="loadSampleDataBtn" class="btn btn-warning-outline">Cargar Ejemplos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 6: CALCULADORA RÁPIDA Y FINANCIERA -->
+  <div class="modal-backdrop" id="calculatorModal" role="dialog" aria-modal="true" aria-labelledby="calcModalTitle">
+    <div class="modal-content modal-calculator">
+      <div class="modal-header">
+        <div class="modal-header-icon-title">
+          <span class="header-icon-badge">🧮</span>
+          <div>
+            <h3 id="calcModalTitle">Calculadora Financiera</h3>
+            <p class="modal-subtitle">Suma tickets, calcula cuotas fijas y porcentajes al instante</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="closeCalcModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <div class="calculator-body">
+        
+        <!-- Pantalla de la calculadora -->
+        <div class="calculator-screen">
+          <div class="calc-history" id="calcDisplayHistory"></div>
+          <div class="calc-main-row">
+            <span class="calc-currency">$</span>
+            <span class="calc-value" id="calcDisplayValue">0</span>
+          </div>
+          <!-- Desglose de cuotas sugeridas dinámico -->
+          <div class="calc-cuotas-info" id="calcCuotasInfo"></div>
+        </div>
+
+        <!-- Herramientas Rápidas de Porcentajes y Cuotas -->
+        <div class="calc-tools-bar">
+          <div class="calc-tools-group">
+            <span class="tools-label">Cuotas Rápidas:</span>
+            <button type="button" class="btn-tool-chip" onclick="window.calculatorManager.applyCuotas(3)">3 cuotas</button>
+            <button type="button" class="btn-tool-chip" onclick="window.calculatorManager.applyCuotas(6)">6 cuotas</button>
+            <button type="button" class="btn-tool-chip" onclick="window.calculatorManager.applyCuotas(12)">12 cuotas</button>
+            <button type="button" class="btn-tool-chip" onclick="window.calculatorManager.applyCuotas(18)">18 cuotas</button>
+          </div>
+          <div class="calc-tools-group">
+            <span class="tools-label">Descuento / Recargo:</span>
+            <button type="button" class="btn-tool-chip chip-green" onclick="window.calculatorManager.applyPercentage(-10)">-10% Efvo</button>
+            <button type="button" class="btn-tool-chip chip-green" onclick="window.calculatorManager.applyPercentage(-15)">-15% Efvo</button>
+            <button type="button" class="btn-tool-chip chip-orange" onclick="window.calculatorManager.applyPercentage(10)">+10% Rec.</button>
+            <button type="button" class="btn-tool-chip chip-orange" onclick="window.calculatorManager.applyPercentage(15)">+15% Rec.</button>
+          </div>
+        </div>
+
+        <!-- Teclado Numérico y Operaciones -->
+        <div class="calculator-keypad">
+          <button type="button" class="calc-btn btn-calc-action" onclick="window.calculatorManager.clear()">C</button>
+          <button type="button" class="calc-btn btn-calc-action" onclick="window.calculatorManager.clearEntry()">CE</button>
+          <button type="button" class="calc-btn btn-calc-action" onclick="window.calculatorManager.backspace()">⌫</button>
+          <button type="button" class="calc-btn btn-calc-op" onclick="window.calculatorManager.setOperation('/')">÷</button>
+
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(7)">7</button>
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(8)">8</button>
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(9)">9</button>
+          <button type="button" class="calc-btn btn-calc-op" onclick="window.calculatorManager.setOperation('*')">×</button>
+
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(4)">4</button>
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(5)">5</button>
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(6)">6</button>
+          <button type="button" class="calc-btn btn-calc-op" onclick="window.calculatorManager.setOperation('-')">−</button>
+
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(1)">1</button>
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(2)">2</button>
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(3)">3</button>
+          <button type="button" class="calc-btn btn-calc-op" onclick="window.calculatorManager.setOperation('+')">+</button>
+
+          <button type="button" class="calc-btn btn-calc-action" onclick="window.calculatorManager.toggleSign()">±</button>
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDigit(0)">0</button>
+          <button type="button" class="calc-btn btn-calc-num" onclick="window.calculatorManager.inputDecimal()">,</button>
+          <button type="button" class="calc-btn btn-calc-equal" onclick="window.calculatorManager.calculate()">=</button>
+        </div>
+
+        <div class="calculator-footer-actions">
+          <button type="button" class="btn btn-secondary flex-1" onclick="window.calculatorManager.copyResult()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copiar Monto</span>
+          </button>
+          <button type="button" class="btn btn-primary flex-1" onclick="window.calculatorManager.pasteToForm()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>Usar en Formulario</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 7: AGREGAR / EDITAR COMPRA EN CUOTAS -->
+  <div class="modal-backdrop" id="cardModal" role="dialog" aria-modal="true" aria-labelledby="cardModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="cardModalTitle">Agregar Compra en Cuotas</h3>
+        <button class="btn-close-modal" id="closeCardModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="cardForm" class="modal-form">
+        <input type="hidden" id="cardId">
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="cardDescription">Producto o Compra *</label>
+            <input type="text" id="cardDescription" placeholder="Ej: Heladera No Frost, Zapatillas Nike, Muebles..." required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="cardCategory">Categoría</label>
+            <select id="cardCategory" required>
+              <option value="Electrodomésticos">📺 Electrodomésticos</option>
+              <option value="Tecnología">💻 Tecnología / Celulares</option>
+              <option value="Indumentaria">👟 Indumentaria y Ropa</option>
+              <option value="Hogar">🛋️ Hogar y Muebles</option>
+              <option value="Mantenimiento">🔧 Construcción / Arreglos</option>
+              <option value="Supermercado">🛒 Supermercado</option>
+              <option value="Salud">💊 Salud / Óptica</option>
+              <option value="Viajes">✈️ Pasajes y Viajes</option>
+              <option value="Otros">📦 Otros</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="cardName">Nombre de la Tarjeta / Banco *</label>
+            <input type="text" id="cardName" placeholder="Ej: Visa Galicia, Mastercard BBVA, Naranja X, Santander..." required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="cardBrand">Emisor / Marca *</label>
+            <select id="cardBrand" required>
+              <option value="Visa">💳 Visa</option>
+              <option value="Mastercard">💳 Mastercard</option>
+              <option value="Naranja">🍊 Naranja X</option>
+              <option value="Amex">💳 American Express</option>
+              <option value="Cabal">💳 Cabal</option>
+              <option value="Otra">📋 Otra</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="cardTotalAmount">Monto Total de la Compra ($) *</label>
+            <input type="number" id="cardTotalAmount" min="0" step="0.01" placeholder="Ej: 180000" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="cardTotalInstallments">Cantidad de Cuotas *</label>
+            <select id="cardTotalInstallments" required>
+              <option value="1">1 cuota</option>
+              <option value="2">2 cuotas</option>
+              <option value="3">3 cuotas</option>
+              <option value="6" selected>6 cuotas</option>
+              <option value="9">9 cuotas</option>
+              <option value="12">12 cuotas</option>
+              <option value="18">18 cuotas</option>
+              <option value="24">24 cuotas</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="cardInstallmentAmount">Monto de cada Cuota ($) *</label>
+            <input type="number" id="cardInstallmentAmount" min="0" step="0.01" placeholder="Ej: 30000" required>
+            <small class="form-help-text">Se calcula automáticamente o puedes editarlo si incluye interés.</small>
+          </div>
+          <div class="form-group flex-1">
+            <label for="cardDueDay">Día de Vencimiento de Resumen (1 al 31) *</label>
+            <input type="number" id="cardDueDay" min="1" max="31" placeholder="Ej: 10" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="cardStartYearMonth">Mes de Inicio de la Primera Cuota (YYYY-MM) *</label>
+            <input type="month" id="cardStartYearMonth" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="cardNotes">Notas / Titular</label>
+            <input type="text" id="cardNotes" placeholder="Ej: Tarjeta de mamá / Plan Z / Comprado en Frávega">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelCardBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-purple">Guardar Compra en Cuotas</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 8: REGISTRAR PAGO DE CUOTA DE TARJETA -->
+  <div class="modal-backdrop" id="cardPayModal" role="dialog" aria-modal="true" aria-labelledby="cardPayModalTitle">
+    <div class="modal-content modal-compact">
+      <div class="modal-header">
+        <h3 id="cardPayModalTitle">Registrar Pago de Cuota</h3>
+        <button class="btn-close-modal" id="closeCardPayModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="cardPayForm" class="modal-form">
+        <input type="hidden" id="cardPayId">
+
+        <div class="pay-service-banner pay-card-banner">
+          <div class="pay-service-icon">💳</div>
+          <div class="pay-service-info">
+            <h4 id="cardPayBannerName">Tarjeta - Compra</h4>
+            <p id="cardPayBannerDetail">Cuota del mes</p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="cardPayAmount">Monto de la Cuota Abonada ($) *</label>
+            <input type="number" id="cardPayAmount" min="0" step="0.01" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="cardPayDate">Fecha de Pago *</label>
+            <input type="date" id="cardPayDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="cardPayMethod">Forma de Pago del Resumen</label>
+          <select id="cardPayMethod" required>
+            <option value="Débito en Cuenta Bancaria">🔄 Débito en Cuenta Bancaria</option>
+            <option value="Transferencia / HomeBanking">📱 Transferencia / HomeBanking</option>
+            <option value="Efectivo (Pago Fácil / Rapipago)">💵 Efectivo (Pago Fácil / Rapipago)</option>
+            <option value="Otro">📋 Otro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="cardPayReceiptNote">Nota o Comprobante (opcional)</label>
+          <input type="text" id="cardPayReceiptNote" placeholder="Ej: Pago de resumen total Galicia / Op #83921">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelCardPayBtn">Cancelar</button>
+          <button type="submit" class="btn btn-success">✅ Confirmar Pago de Cuota</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 9: CONFIGURAR PRESUPUESTO MENSUAL -->
+  <div class="modal-backdrop" id="budgetModal" role="dialog" aria-modal="true" aria-labelledby="budgetModalTitle">
+    <div class="modal-content modal-compact">
+      <div class="modal-header">
+        <div class="modal-header-icon-title">
+          <span class="header-icon-badge">🎯</span>
+          <div>
+            <h3 id="budgetModalTitle">Ajustar Presupuesto Mensual</h3>
+            <p class="modal-subtitle">Establece el tope familiar de gastos para el mes</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="closeBudgetModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="budgetForm" class="modal-form">
+        
+        <div class="form-group">
+          <label for="budgetAmountInput">Monto Límite del Presupuesto ($) *</label>
+          <input type="number" id="budgetAmountInput" min="0" step="1000" placeholder="Ej: 450000" required>
+        </div>
+
+        <div class="budget-presets-group">
+          <span class="presets-label">Valores sugeridos rápidos:</span>
+          <div class="budget-chips-row">
+            <button type="button" class="btn-tool-chip" onclick="document.getElementById('budgetAmountInput').value = '300000'">$300.000</button>
+            <button type="button" class="btn-tool-chip" onclick="document.getElementById('budgetAmountInput').value = '450000'">$450.000</button>
+            <button type="button" class="btn-tool-chip" onclick="document.getElementById('budgetAmountInput').value = '600000'">$600.000</button>
+            <button type="button" class="btn-tool-chip" onclick="document.getElementById('budgetAmountInput').value = '800000'">$800.000</button>
+            <button type="button" class="btn-tool-chip" onclick="document.getElementById('budgetAmountInput').value = '1000000'">$1.000.000</button>
+          </div>
+        </div>
+
+        <div class="form-checkbox-row" style="margin-top: 1rem;">
+          <label class="custom-checkbox">
+            <input type="checkbox" id="budgetApplyAllMonths" checked>
+            <span class="checkbox-box"></span>
+            <span class="checkbox-text">
+              <strong>Usar este monto como presupuesto base para todos los meses</strong>
+              <small>(Se aplicará automáticamente a los próximos meses)</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelBudgetBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Presupuesto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 10: AUTENTICACIÓN (LOGIN / REGISTRO) -->
+  <div class="modal-backdrop" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="modal-content modal-auth">
+      <div class="modal-header">
+        <div class="modal-header-icon-title">
+          <span class="header-icon-badge">🔐</span>
+          <div>
+            <h3 id="authModalTitle">Acceso Familiar - Nube</h3>
+            <p class="modal-subtitle">Conéctate para sincronizar tus gastos con tu familia</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="closeAuthModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab-btn active" id="tabLoginBtn">Iniciar Sesión</button>
+        <button type="button" class="auth-tab-btn" id="tabRegisterBtn">Crear Cuenta</button>
+      </div>
+
+      <form id="authForm" class="modal-form">
+        <!-- Nombre Completo (solo registro) -->
+        <div class="form-group" id="authNameGroup" style="display:none;">
+          <label for="authFullName">Nombre o Apodo *</label>
+          <input type="text" id="authFullName" placeholder="Ej: Laura, Papá, Marcos...">
+        </div>
+
+        <div class="form-group">
+          <label for="authEmail">Correo Electrónico *</label>
+          <input type="email" id="authEmail" placeholder="tu-email@ejemplo.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="authPassword">Contraseña *</label>
+          <input type="password" id="authPassword" placeholder="Mínimo 6 caracteres" minlength="6" required>
+        </div>
+
+        <div class="auth-action-row">
+          <button type="submit" class="btn btn-primary btn-block" id="authSubmitBtn">Ingresar a Mi Hogar</button>
+        </div>
+
+        <div class="auth-footer-links">
+          <button type="button" class="btn-link-subtle" id="btnOpenSupaConfig">⚙️ Configurar URL y API Key de Supabase</button>
+          <button type="button" class="btn-link-subtle" id="btnContinueLocal">Continuar en Modo Local sin cuenta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 11: ONBOARDING DE HOGAR (CREAR O UNIRSE) -->
+  <div class="modal-backdrop" id="householdModal" role="dialog" aria-modal="true" aria-labelledby="houseModalTitle">
+    <div class="modal-content modal-household">
+      <div class="modal-header">
+        <div class="modal-header-icon-title">
+          <span class="header-icon-badge">🏠</span>
+          <div>
+            <h3 id="houseModalTitle">Configura tu Hogar Familiar</h3>
+            <p class="modal-subtitle">Organiza los gastos en conjunto con tus seres queridos</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="household-options-grid">
+        
+        <!-- Opción A: Crear Nuevo Hogar -->
+        <div class="household-option-card">
+          <div class="option-card-header">
+            <span class="option-icon">✨</span>
+            <h4>Crear un Nuevo Hogar</h4>
+            <p>Comienza desde cero y genera un código de invitación para compartir con tu familia.</p>
+          </div>
+          <form id="createHouseForm" class="option-form">
+            <div class="form-group">
+              <label for="newHouseName">Nombre del Hogar *</label>
+              <input type="text" id="newHouseName" placeholder="Ej: Familia Gómez, Casa Palermo..." required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Crear Hogar y Generar Código</button>
+          </form>
+        </div>
+
+        <!-- Divisor Visual -->
+        <div class="household-divider">
+          <span>O</span>
+        </div>
+
+        <!-- Opción B: Unirse con Código -->
+        <div class="household-option-card">
+          <div class="option-card-header">
+            <span class="option-icon">🔑</span>
+            <h4>Unirme a un Hogar Existente</h4>
+            <p>Ingresa el código que te envió un familiar para ver y pagar los mismos gastos.</p>
+          </div>
+          <form id="joinHouseForm" class="option-form">
+            <div class="form-group">
+              <label for="joinInviteCode">Código de Invitación *</label>
+              <input type="text" id="joinInviteCode" placeholder="Ej: CASA-8492" required style="text-transform: uppercase; font-family: monospace; font-weight: 700; letter-spacing: 0.05em;">
+            </div>
+            <button type="submit" class="btn btn-secondary btn-block">Unirme al Hogar</button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 12: INVITAR FAMILIARES -->
+  <div class="modal-backdrop" id="inviteModal" role="dialog" aria-modal="true" aria-labelledby="inviteModalTitle">
+    <div class="modal-content modal-compact">
+      <div class="modal-header">
+        <div class="modal-header-icon-title">
+          <span class="header-icon-badge">📱</span>
+          <div>
+            <h3 id="inviteModalTitle">Invitar Familiares al Hogar</h3>
+            <p class="modal-subtitle">Comparte este código para que se sumen a este hogar</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="closeInviteModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <div class="invite-modal-body">
+        <div class="invite-code-card">
+          <span class="invite-code-label">CÓDIGO DE INVITACIÓN</span>
+          <strong class="invite-code-large" id="modalInviteCodeDisplay">CASA-0000</strong>
+          <button type="button" class="btn btn-secondary btn-sm" id="modalCopyCodeBtn">📋 Copiar Código</button>
+        </div>
+
+        <div class="invite-steps">
+          <p><strong>¿Cómo se une tu familiar?</strong></p>
+          <ol>
+            <li>Entra a la aplicación web.</li>
+            <li>Crea una cuenta o inicia sesión.</li>
+            <li>Elige <em>"Unirme a un Hogar Existente"</em> y pega este código.</li>
+          </ol>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="closeInviteBtn2">Cerrar</button>
+          <button type="button" class="btn btn-whatsapp flex-1" id="shareInviteWhatsAppBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            <span>Enviar Invitación por WhatsApp</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 13: CONFIGURACIÓN DE SUPABASE -->
+  <div class="modal-backdrop" id="supabaseConfigModal" role="dialog" aria-modal="true" aria-labelledby="supaConfigTitle">
+    <div class="modal-content modal-compact">
+      <div class="modal-header">
+        <div class="modal-header-icon-title">
+          <span class="header-icon-badge">⚡</span>
+          <div>
+            <h3 id="supaConfigTitle">Conectar Supabase</h3>
+            <p class="modal-subtitle">Ingresa las credenciales de tu proyecto</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="closeSupaConfigModalBtn" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <form id="supabaseConfigForm" class="modal-form">
+        <div class="form-group">
+          <label for="supaUrlInput">Supabase Project URL *</label>
+          <input type="url" id="supaUrlInput" placeholder="https://xyzcompany.supabase.co" required>
+          <small class="form-help-text">Encuéntrala en tu panel Supabase -> Project Settings -> API</small>
+        </div>
+
+        <div class="form-group">
+          <label for="supaKeyInput">Supabase Anon Public API Key *</label>
+          <input type="text" id="supaKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." required>
+          <small class="form-help-text">La clave 'anon public' para lectura y escritura de clientes</small>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelSupaConfigBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar y Conectar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR DE NOTIFICACIONES TOAST -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- SCRIPTS MODULARES -->
+  <script src="config.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/services.js"></script>
+  <script src="js/cards.js"></script>
+  <script src="js/expenses.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/settlement.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/whatsapp.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
