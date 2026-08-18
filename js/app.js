@@ -368,6 +368,13 @@ class AppController {
       window.expensesManager.openAddModal();
     });
 
+    const fabQuickAddBtn = document.getElementById('fabQuickAddBtn');
+    if (fabQuickAddBtn) {
+      fabQuickAddBtn.addEventListener('click', () => {
+        window.expensesManager.openAddModal();
+      });
+    }
+
     const addCardBtn = document.getElementById('addCardBtn');
     if (addCardBtn) {
       addCardBtn.addEventListener('click', () => {
@@ -396,7 +403,7 @@ class AppController {
     });
 
     // Cerrar Modales
-    document.querySelectorAll('.btn-close-modal, #cancelServiceBtn, #cancelPayBtn, #cancelExpenseBtn, #cancelCardBtn, #cancelCardPayBtn, #closeCalcModalBtn, #cancelBudgetBtn, #closeBudgetModalBtn, #closeAuthModalBtn, #closeInviteModalBtn, #closeInviteBtn2, #closeSupaConfigModalBtn, #cancelSupaConfigBtn').forEach(btn => {
+    document.querySelectorAll('.btn-close-modal, #cancelServiceBtn, #cancelPayBtn, #cancelExpenseBtn, #cancelCardBtn, #cancelCardPayBtn, #closeCalcModalBtn, #cancelBudgetBtn, #closeBudgetModalBtn, #closeAuthModalBtn, #closeInviteModalBtn, #closeInviteBtn2').forEach(btn => {
       btn.addEventListener('click', () => this.closeAllModals());
     });
 
@@ -607,8 +614,7 @@ class AppController {
 
         try {
           if (!window.supabaseService.isConfigured()) {
-            this.openModal('supabaseConfigModal');
-            this.showToast('Primero configura la URL y API Key de Supabase', 'warning');
+            this.showToast('El cliente de Supabase no está conectado.', 'danger');
             return;
           }
 
@@ -717,34 +723,6 @@ class AppController {
         if (!house) return;
         const text = encodeURIComponent(`🏠 ¡Hola! Sumate a nuestro hogar "${house.name}" en la app de Servicios y Gastos para organizar las cuentas juntos.\n\n🔑 Código de Invitación: *${house.invite_code}*\n\n¡Ingresa el código al registrarte en la app!`);
         window.open(`https://wa.me/?text=${text}`, '_blank');
-      });
-    }
-
-    // Configuración de Supabase
-    const btnOpenSupaConfig = document.getElementById('btnOpenSupaConfig');
-    if (btnOpenSupaConfig) {
-      btnOpenSupaConfig.addEventListener('click', () => {
-        const creds = window.SUPABASE_CONFIG.getCredentials();
-        const urlInput = document.getElementById('supaUrlInput');
-        const keyInput = document.getElementById('supaKeyInput');
-        if (urlInput) urlInput.value = creds.url || '';
-        if (keyInput) keyInput.value = creds.key || '';
-        this.openModal('supabaseConfigModal');
-      });
-    }
-
-    const supaConfigForm = document.getElementById('supabaseConfigForm');
-    if (supaConfigForm) {
-      supaConfigForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const url = document.getElementById('supaUrlInput').value.trim();
-        const key = document.getElementById('supaKeyInput').value.trim();
-
-        window.SUPABASE_CONFIG.saveCredentials(url, key);
-        window.supabaseService.init();
-        this.closeAllModals();
-        this.showToast('Credenciales de Supabase guardadas y conectadas', 'success');
-        this.initAuth();
       });
     }
 
