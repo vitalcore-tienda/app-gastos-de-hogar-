@@ -240,12 +240,13 @@ class ServicesManager {
     );
   }
 
-  copyCode(code) {
-    navigator.clipboard.writeText(code).then(() => {
+  async copyCode(code) {
+    const copied = await window.app.copyTextToClipboard(code);
+    if (copied) {
       window.app.showToast('Código copiado al portapapeles: ' + code, 'success');
-    }).catch(() => {
+    } else {
       window.app.showToast('No se pudo copiar el código', 'warning');
-    });
+    }
   }
 
   openPayModal(serviceId, yearMonth) {

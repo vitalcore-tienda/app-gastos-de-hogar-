@@ -15,6 +15,7 @@ class AppController {
 
     this.activeTab = 'services';
     this.authMode = 'login'; // 'login' o 'register'
+    this.lastFocusedElement = null;
   }
 
   get yearMonthKey() {
@@ -224,7 +225,18 @@ class AppController {
   openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
+      modal.tabIndex = -1;
+      if (!document.querySelector('.modal-backdrop.active')) {
+        this.lastFocusedElement = document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      }
       modal.classList.add('active');
+      document.body.classList.add('modal-open');
+
+      requestAnimationFrame(() => {
+        this.focusModal(modal);
+      });
     }
   }
 
@@ -232,11 +244,117 @@ class AppController {
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.remove('active');
+      this.restoreModalState();
     }
   }
 
   closeAllModals() {
     document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('active'));
+    this.restoreModalState();
+  }
+
+  restoreModalState() {
+    const activeModal = this.getActiveModal();
+    if (activeModal) {
+      this.focusModal(activeModal);
+      return;
+    }
+
+    document.body.classList.remove('modal-open');
+    if (this.lastFocusedElement?.isConnected) {
+      this.lastFocusedElement.focus({ preventScroll: true });
+    }
+    this.lastFocusedElement = null;
+  }
+
+  getActiveModal() {
+    const activeModals = document.querySelectorAll('.modal-backdrop.active');
+    return activeModals[activeModals.length - 1] || null;
+  }
+
+  getFocusableElements(container) {
+    return [...container.querySelectorAll(
+      'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    )].filter(element => {
+      const styles = window.getComputedStyle(element);
+      return element.getClientRects().length > 0 && styles.visibility !== 'hidden';
+    });
+  }
+
+  focusModal(modal) {
+    const [firstFocusable] = this.getFocusableElements(modal);
+    (firstFocusable || modal).focus({ preventScroll: true });
+  }
+
+  handleModalKeydown(event) {
+    if (event.defaultPrevented) return;
+
+    const modal = this.getActiveModal();
+    if (!modal) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeAllModals();
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+
+    const focusable = this.getFocusableElements(modal);
+
+    if (!focusable.length) {
+      event.preventDefault();
+      modal.focus({ preventScroll: true });
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  async copyTextToClipboard(text) {
+    if (!text) return false;
+
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // Continúa con el mecanismo de compatibilidad para navegadores que lo bloqueen.
+      }
+    }
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const fallback = document.createElement('textarea');
+    fallback.value = text;
+    fallback.setAttribute('readonly', '');
+    fallback.style.position = 'fixed';
+    fallback.style.opacity = '0';
+    fallback.style.pointerEvents = 'none';
+    document.body.appendChild(fallback);
+    fallback.select();
+    fallback.setSelectionRange(0, fallback.value.length);
+
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    }
+    fallback.remove();
+    if (previouslyFocused?.isConnected) {
+      previouslyFocused.focus({ preventScroll: true });
+    }
+    return copied;
   }
 
   // ==================== NOTIFICACIONES TOAST ====================
@@ -368,13 +486,6 @@ class AppController {
       window.expensesManager.openAddModal();
     });
 
-    const fabQuickAddBtn = document.getElementById('fabQuickAddBtn');
-    if (fabQuickAddBtn) {
-      fabQuickAddBtn.addEventListener('click', () => {
-        window.expensesManager.openAddModal();
-      });
-    }
-
     const addCardBtn = document.getElementById('addCardBtn');
     if (addCardBtn) {
       addCardBtn.addEventListener('click', () => {
@@ -403,7 +514,7 @@ class AppController {
     });
 
     // Cerrar Modales
-    document.querySelectorAll('.btn-close-modal, #cancelServiceBtn, #cancelPayBtn, #cancelExpenseBtn, #cancelCardBtn, #cancelCardPayBtn, #closeCalcModalBtn, #cancelBudgetBtn, #closeBudgetModalBtn, #closeAuthModalBtn, #closeInviteModalBtn, #closeInviteBtn2').forEach(btn => {
+    document.querySelectorAll('.btn-close-modal, #cancelServiceBtn, #cancelPayBtn, #cancelExpenseBtn, #cancelCardBtn, #cancelCardPayBtn, #closeCalcModalBtn, #cancelBudgetBtn, #closeBudgetModalBtn, #closeAuthModalBtn, #closeInviteModalBtn, #closeInviteBtn2, #closeSupaConfigModalBtn, #cancelSupaConfigBtn').forEach(btn => {
       btn.addEventListener('click', () => this.closeAllModals());
     });
 
@@ -413,9 +524,7 @@ class AppController {
       });
     });
 
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.closeAllModals();
-    });
+    window.addEventListener('keydown', (e) => this.handleModalKeydown(e));
 
     // WhatsApp Modal Acciones
     document.getElementById('copyWhatsAppTextBtn').addEventListener('click', () => {
@@ -614,7 +723,8 @@ class AppController {
 
         try {
           if (!window.supabaseService.isConfigured()) {
-            this.showToast('El cliente de Supabase no está conectado.', 'danger');
+            this.openModal('supabaseConfigModal');
+            this.showToast('Primero configura la URL y API Key de Supabase', 'warning');
             return;
           }
 
@@ -703,11 +813,19 @@ class AppController {
       });
     }
 
-    const copyCodeHandler = () => {
+    const copyCodeHandler = async () => {
       const code = window.supabaseService?.currentHousehold?.invite_code;
-      if (code) {
-        navigator.clipboard.writeText(code);
-        this.showToast(`Código ${code} copiado al portapapeles`, 'success');
+      if (!code) return;
+
+      try {
+        const copied = await this.copyTextToClipboard(code);
+        if (copied) {
+          this.showToast(`Código ${code} copiado al portapapeles`, 'success');
+        } else {
+          this.showToast('No se pudo copiar el código. Intenta seleccionarlo y copiarlo manualmente.', 'warning');
+        }
+      } catch {
+        this.showToast('No se pudo copiar el código. Intenta seleccionarlo y copiarlo manualmente.', 'warning');
       }
     };
 
@@ -723,6 +841,34 @@ class AppController {
         if (!house) return;
         const text = encodeURIComponent(`🏠 ¡Hola! Sumate a nuestro hogar "${house.name}" en la app de Servicios y Gastos para organizar las cuentas juntos.\n\n🔑 Código de Invitación: *${house.invite_code}*\n\n¡Ingresa el código al registrarte en la app!`);
         window.open(`https://wa.me/?text=${text}`, '_blank');
+      });
+    }
+
+    // Configuración de Supabase
+    const btnOpenSupaConfig = document.getElementById('btnOpenSupaConfig');
+    if (btnOpenSupaConfig) {
+      btnOpenSupaConfig.addEventListener('click', () => {
+        const creds = window.SUPABASE_CONFIG.getCredentials();
+        const urlInput = document.getElementById('supaUrlInput');
+        const keyInput = document.getElementById('supaKeyInput');
+        if (urlInput) urlInput.value = creds.url || '';
+        if (keyInput) keyInput.value = creds.key || '';
+        this.openModal('supabaseConfigModal');
+      });
+    }
+
+    const supaConfigForm = document.getElementById('supabaseConfigForm');
+    if (supaConfigForm) {
+      supaConfigForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const url = document.getElementById('supaUrlInput').value.trim();
+        const key = document.getElementById('supaKeyInput').value.trim();
+
+        window.SUPABASE_CONFIG.saveCredentials(url, key);
+        window.supabaseService.init();
+        this.closeAllModals();
+        this.showToast('Credenciales de Supabase guardadas y conectadas', 'success');
+        this.initAuth();
       });
     }
 

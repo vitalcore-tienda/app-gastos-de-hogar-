@@ -249,15 +249,16 @@ class CalculatorManager {
     window.app.showToast(`$${current.toLocaleString('es-AR')} en ${cuotas} cuotas de $${perCuota.toLocaleString('es-AR')}`, 'info');
   }
 
-  copyResult() {
+  async copyResult() {
     const val = parseFloat(this.currentValue);
     if (isNaN(val)) return;
 
-    navigator.clipboard.writeText(String(val)).then(() => {
+    const copied = await window.app.copyTextToClipboard(String(val));
+    if (copied) {
       window.app.showToast(`Monto copiado: $${val.toLocaleString('es-AR')}`, 'success');
-    }).catch(() => {
+    } else {
       window.app.showToast('No se pudo copiar el monto', 'warning');
-    });
+    }
   }
 
   pasteToForm() {
@@ -301,6 +302,7 @@ class CalculatorManager {
       } else if (e.key === 'Backspace') {
         this.backspace();
       } else if (e.key === 'Escape') {
+        e.preventDefault();
         this.close();
       }
     });

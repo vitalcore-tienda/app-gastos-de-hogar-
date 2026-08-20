@@ -2,9 +2,6 @@
  * SUPABASE-CLIENT.JS - Cliente de Supabase, Autenticación y Gestión de Hogares
  */
 
-const SUPABASE_URL = "https://wiwxkajgnkuknqlxoqsw.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Nb1z26B4fj-qZifeEZqa9Q_p1LgZvSc";
-
 class SupabaseService {
   constructor() {
     this.client = null;
@@ -15,13 +12,11 @@ class SupabaseService {
   }
 
   init() {
-    const creds = window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.getCredentials() : null;
-    const url = (creds && creds.url) || SUPABASE_URL;
-    const key = (creds && creds.key) || SUPABASE_ANON_KEY;
+    const creds = window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.getCredentials() : { isConfigured: false };
     
-    if (window.supabase && url && key) {
+    if (creds.isConfigured && window.supabase) {
       try {
-        this.client = window.supabase.createClient(url, key, {
+        this.client = window.supabase.createClient(creds.url, creds.key, {
           auth: {
             persistSession: true,
             autoRefreshToken: true
@@ -37,7 +32,8 @@ class SupabaseService {
   }
 
   isConfigured() {
-    return Boolean(this.client);
+    const creds = window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG.getCredentials() : { isConfigured: false };
+    return creds.isConfigured && Boolean(this.client);
   }
 
   // ==========================================================================
