@@ -103,13 +103,6 @@ class SupabaseService {
   // GESTIÓN DE HOGARES Y CÓDIGOS DE INVITACIÓN
   // ==========================================================================
 
-  generateInviteCode(householdName) {
-    // Generar código legible estilo CASA-8492 o FAM-7391
-    const prefix = (householdName.replace(/[^a-zA-Z]/g, '').slice(0, 4) || 'CASA').toUpperCase();
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    return `${prefix}-${randomNum}`;
-  }
-
   async getUserHousehold(userId) {
     if (!this.client || !userId) return null;
 
@@ -150,34 +143,19 @@ class SupabaseService {
     if (!this.currentUser) throw new Error('Debes iniciar sesión para crear un hogar');
 
     const cleanName = name.trim();
-    const inviteCode = this.generateInviteCode(cleanName);
+    const { data, error } = await this.client.rpc('create_household', {
+      p_name: cleanName
+    });
 
-    // 1. Insertar nuevo hogar
-    const { data: household, error: houseErr } = await this.client
-      .from('households')
-      .insert({
-        name: cleanName,
-        invite_code: inviteCode,
-        created_by: this.currentUser.id
-      })
-      .select()
-      .single();
+    if (error) throw error;
 
-    if (houseErr) throw houseErr;
+    const household = Array.isArray(data) ? data[0] : data;
+    if (!household) throw new Error('No se pudo crear el hogar. Intenta nuevamente.');
 
-    // 2. Asociar al creador como miembro administrador
-    const { error: memberErr } = await this.client
-      .from('household_members')
-      .insert({
-        household_id: household.id,
-        user_id: this.currentUser.id,
-        user_email: this.currentUser.email,
-        role: 'admin'
-      });
-
-    if (memberErr) throw memberErr;
-
-    this.currentHousehold = { ...household, userRole: 'admin' };
+    this.currentHousehold = {
+      ...household,
+      userRole: household.user_role || 'admin'
+    };
     localStorage.setItem('mihogar_cached_household', JSON.stringify(this.currentHousehold));
     return this.currentHousehold;
   }
@@ -189,32 +167,19 @@ class SupabaseService {
     }
     if (!this.currentUser) throw new Error('Debes iniciar sesión para unirte a un hogar');
 
-    const cleanCode = inviteCode.trim().toUpperCase();
+    const { data, error } = await this.client.rpc('join_household_by_invite_code', {
+      p_invite_code: inviteCode.trim()
+    });
 
-    // 1. Buscar hogar por código de invitación
-    const { data: household, error: findErr } = await this.client
-      .from('households')
-      .select('*')
-      .ilike('invite_code', cleanCode)
-      .maybeSingle();
+    if (error) throw error;
 
-    if (findErr || !household) {
-      throw new Error('Código de invitación no encontrado o inválido. Verifica el código con tu familiar.');
-    }
+    const household = Array.isArray(data) ? data[0] : data;
+    if (!household) throw new Error('No se pudo unir al hogar con ese código.');
 
-    // 2. Registrar como miembro
-    const { error: joinErr } = await this.client
-      .from('household_members')
-      .upsert({
-        household_id: household.id,
-        user_id: this.currentUser.id,
-        user_email: this.currentUser.email,
-        role: 'member'
-      }, { onConflict: 'household_id,user_id' });
-
-    if (joinErr) throw joinErr;
-
-    this.currentHousehold = { ...household, userRole: 'member' };
+    this.currentHousehold = {
+      ...household,
+      userRole: household.user_role || 'member'
+    };
     localStorage.setItem('mihogar_cached_household', JSON.stringify(this.currentHousehold));
     return this.currentHousehold;
   }

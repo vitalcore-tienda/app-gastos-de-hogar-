@@ -723,8 +723,12 @@ class AppController {
 
         try {
           if (!window.supabaseService.isConfigured()) {
-            this.openModal('supabaseConfigModal');
-            this.showToast('Primero configura la URL y API Key de Supabase', 'warning');
+            if (window.SUPABASE_CONFIG?.hasPublicCredentials?.()) {
+              this.showToast('No se pudo conectar al servicio. Intenta nuevamente en unos minutos.', 'warning');
+            } else {
+              this.openModal('supabaseConfigModal');
+              this.showToast('Primero configura la conexión a Supabase', 'warning');
+            }
             return;
           }
 
@@ -847,6 +851,11 @@ class AppController {
     // Configuración de Supabase
     const btnOpenSupaConfig = document.getElementById('btnOpenSupaConfig');
     if (btnOpenSupaConfig) {
+      // En la versión publicada la conexión ya viene preparada para el hogar.
+      // Dejamos el formulario como respaldo para una instalación de desarrollo.
+      if (window.SUPABASE_CONFIG?.hasPublicCredentials?.()) {
+        btnOpenSupaConfig.hidden = true;
+      }
       btnOpenSupaConfig.addEventListener('click', () => {
         const creds = window.SUPABASE_CONFIG.getCredentials();
         const urlInput = document.getElementById('supaUrlInput');

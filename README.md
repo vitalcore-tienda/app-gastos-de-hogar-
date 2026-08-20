@@ -62,5 +62,8 @@ La aplicación funciona como sitio estático, así que se puede publicar directa
 ### Importante sobre Supabase
 
 - El archivo `.env` queda excluido por `.gitignore`: no lo subas al repositorio.
-- Cada navegador puede configurar la conexión a Supabase desde la aplicación y la guarda localmente.
-- Si quieres que la conexión ya venga preparada para todos los celulares, hay que definir una configuración pública segura y verificar las reglas RLS de Supabase antes de incorporarla al sitio.
+- La conexión compartida se carga desde `config.public.js`, por lo que cada celular solo necesita crear su cuenta o iniciar sesión.
+- La URL del proyecto y una clave **publishable/anon** son datos públicos de una aplicación web y pueden estar en ese archivo. Nunca agregues una clave `service_role` ni `sb_secret`.
+- Si es la primera vez que preparas la base, ejecuta primero `supabase_schema.sql` y después `supabase_security_migration.sql` en el SQL Editor de Supabase.
+- Antes de publicar, ejecuta `supabase_security_migration.sql` para que cada integrante solo pueda acceder a su propio hogar.
+- En **Authentication → URL Configuration** de Supabase, agrega la dirección final de GitHub Pages como `Site URL` y como `Redirect URL`.
