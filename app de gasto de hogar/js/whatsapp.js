@@ -122,16 +122,17 @@ class WhatsAppManager {
     window.app.openModal('whatsappModal');
   }
 
-  copyToClipboard() {
+  async copyToClipboard() {
     const previewBox = document.getElementById('whatsappPreviewText');
     if (!previewBox) return;
 
     const text = previewBox.textContent;
-    navigator.clipboard.writeText(text).then(() => {
+    const copied = await window.app.copyTextToClipboard(text);
+    if (copied) {
       window.app.showToast('Mensaje copiado para enviar por WhatsApp ✅', 'success');
-    }).catch(() => {
+    } else {
       window.app.showToast('No se pudo copiar el texto', 'warning');
-    });
+    }
   }
 
   openDirect() {

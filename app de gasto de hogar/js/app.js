@@ -15,6 +15,7 @@ class AppController {
 
     this.activeTab = 'services';
     this.authMode = 'login'; // 'login' o 'register'
+    this.lastFocusedElement = null;
   }
 
   get yearMonthKey() {
@@ -224,7 +225,18 @@ class AppController {
   openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
+      modal.tabIndex = -1;
+      if (!document.querySelector('.modal-backdrop.active')) {
+        this.lastFocusedElement = document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      }
       modal.classList.add('active');
+      document.body.classList.add('modal-open');
+
+      requestAnimationFrame(() => {
+        this.focusModal(modal);
+      });
     }
   }
 
@@ -232,11 +244,117 @@ class AppController {
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.remove('active');
+      this.restoreModalState();
     }
   }
 
   closeAllModals() {
     document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('active'));
+    this.restoreModalState();
+  }
+
+  restoreModalState() {
+    const activeModal = this.getActiveModal();
+    if (activeModal) {
+      this.focusModal(activeModal);
+      return;
+    }
+
+    document.body.classList.remove('modal-open');
+    if (this.lastFocusedElement?.isConnected) {
+      this.lastFocusedElement.focus({ preventScroll: true });
+    }
+    this.lastFocusedElement = null;
+  }
+
+  getActiveModal() {
+    const activeModals = document.querySelectorAll('.modal-backdrop.active');
+    return activeModals[activeModals.length - 1] || null;
+  }
+
+  getFocusableElements(container) {
+    return [...container.querySelectorAll(
+      'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    )].filter(element => {
+      const styles = window.getComputedStyle(element);
+      return element.getClientRects().length > 0 && styles.visibility !== 'hidden';
+    });
+  }
+
+  focusModal(modal) {
+    const [firstFocusable] = this.getFocusableElements(modal);
+    (firstFocusable || modal).focus({ preventScroll: true });
+  }
+
+  handleModalKeydown(event) {
+    if (event.defaultPrevented) return;
+
+    const modal = this.getActiveModal();
+    if (!modal) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeAllModals();
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+
+    const focusable = this.getFocusableElements(modal);
+
+    if (!focusable.length) {
+      event.preventDefault();
+      modal.focus({ preventScroll: true });
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  async copyTextToClipboard(text) {
+    if (!text) return false;
+
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // Continúa con el mecanismo de compatibilidad para navegadores que lo bloqueen.
+      }
+    }
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const fallback = document.createElement('textarea');
+    fallback.value = text;
+    fallback.setAttribute('readonly', '');
+    fallback.style.position = 'fixed';
+    fallback.style.opacity = '0';
+    fallback.style.pointerEvents = 'none';
+    document.body.appendChild(fallback);
+    fallback.select();
+    fallback.setSelectionRange(0, fallback.value.length);
+
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    }
+    fallback.remove();
+    if (previouslyFocused?.isConnected) {
+      previouslyFocused.focus({ preventScroll: true });
+    }
+    return copied;
   }
 
   // ==================== NOTIFICACIONES TOAST ====================
@@ -406,9 +524,7 @@ class AppController {
       });
     });
 
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.closeAllModals();
-    });
+    window.addEventListener('keydown', (e) => this.handleModalKeydown(e));
 
     // WhatsApp Modal Acciones
     document.getElementById('copyWhatsAppTextBtn').addEventListener('click', () => {
@@ -607,8 +723,12 @@ class AppController {
 
         try {
           if (!window.supabaseService.isConfigured()) {
-            this.openModal('supabaseConfigModal');
-            this.showToast('Primero configura la URL y API Key de Supabase', 'warning');
+            if (window.SUPABASE_CONFIG?.hasPublicCredentials?.()) {
+              this.showToast('No se pudo conectar al servicio. Intenta nuevamente en unos minutos.', 'warning');
+            } else {
+              this.openModal('supabaseConfigModal');
+              this.showToast('Primero configura la conexión a Supabase', 'warning');
+            }
             return;
           }
 
@@ -697,11 +817,19 @@ class AppController {
       });
     }
 
-    const copyCodeHandler = () => {
+    const copyCodeHandler = async () => {
       const code = window.supabaseService?.currentHousehold?.invite_code;
-      if (code) {
-        navigator.clipboard.writeText(code);
-        this.showToast(`Código ${code} copiado al portapapeles`, 'success');
+      if (!code) return;
+
+      try {
+        const copied = await this.copyTextToClipboard(code);
+        if (copied) {
+          this.showToast(`Código ${code} copiado al portapapeles`, 'success');
+        } else {
+          this.showToast('No se pudo copiar el código. Intenta seleccionarlo y copiarlo manualmente.', 'warning');
+        }
+      } catch {
+        this.showToast('No se pudo copiar el código. Intenta seleccionarlo y copiarlo manualmente.', 'warning');
       }
     };
 
@@ -723,6 +851,11 @@ class AppController {
     // Configuración de Supabase
     const btnOpenSupaConfig = document.getElementById('btnOpenSupaConfig');
     if (btnOpenSupaConfig) {
+      // En la versión publicada la conexión ya viene preparada para el hogar.
+      // Dejamos el formulario como respaldo para una instalación de desarrollo.
+      if (window.SUPABASE_CONFIG?.hasPublicCredentials?.()) {
+        btnOpenSupaConfig.hidden = true;
+      }
       btnOpenSupaConfig.addEventListener('click', () => {
         const creds = window.SUPABASE_CONFIG.getCredentials();
         const urlInput = document.getElementById('supaUrlInput');

@@ -1,24 +1,31 @@
 /**
  * CONFIG.JS - Configuración de Credenciales de Supabase
  *
- * Puedes colocar tus credenciales aquí directamente o en el archivo .env,
- * o ingresarlas desde el botón "Conectar Supabase" en la pantalla de inicio.
+ * En producción, las credenciales públicas se cargan desde config.public.js.
+ * Un archivo .env no puede ser leído por GitHub Pages en el navegador.
  */
 
+const publicConfig = window.SUPABASE_PUBLIC_CONFIG || {};
+
 window.SUPABASE_CONFIG = {
-  // Pega aquí la URL de tu proyecto Supabase (ej: https://xyzcompany.supabase.co)
-  URL: "",
+  // URL y clave pública compartidas por todos los navegadores.
+  URL: typeof publicConfig.URL === 'string' ? publicConfig.URL : "",
 
-  // Pega aquí la clave pública anónima de tu proyecto (anon public key)
-  ANON_KEY: "",
+  // Puede ser una clave publishable moderna o la clave anon pública anterior.
+  ANON_KEY: typeof publicConfig.ANON_KEY === 'string' ? publicConfig.ANON_KEY : "",
 
-  // Función de utilidad para obtener las credenciales activas (desde archivo o localStorage)
+  hasPublicCredentials() {
+    return Boolean(this.URL && this.URL.trim() && this.ANON_KEY && this.ANON_KEY.trim());
+  },
+
+  // La configuración publicada tiene prioridad para evitar que una configuración
+  // antigua guardada en un celular desconecte a la persona del hogar compartido.
   getCredentials() {
     const savedUrl = localStorage.getItem('mihogar_supabase_url');
     const savedKey = localStorage.getItem('mihogar_supabase_anon_key');
 
-    const url = (savedUrl && savedUrl.trim()) || (this.URL && this.URL.trim()) || "";
-    const key = (savedKey && savedKey.trim()) || (this.ANON_KEY && this.ANON_KEY.trim()) || "";
+    const url = (this.URL && this.URL.trim()) || (savedUrl && savedUrl.trim()) || "";
+    const key = (this.ANON_KEY && this.ANON_KEY.trim()) || (savedKey && savedKey.trim()) || "";
 
     return {
       url,

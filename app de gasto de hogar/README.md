@@ -46,3 +46,24 @@ Simplemente abre el archivo `index.html` en cualquier navegador web (Google Chro
 python -m http.server 8080
 ```
 Y abre `http://localhost:8080` en tu navegador.
+
+---
+
+## 🌐 Publicar en GitHub Pages
+
+La aplicación funciona como sitio estático, así que se puede publicar directamente desde la raíz del repositorio:
+
+1. Crea un repositorio en GitHub y sube estos archivos.
+2. En GitHub, abre **Settings → Pages**.
+3. En **Build and deployment**, selecciona **Deploy from a branch**.
+4. Elige la rama `main` y la carpeta **/(root)**; luego guarda.
+5. GitHub mostrará la dirección pública de la aplicación. Ábrela desde cualquier celular.
+
+### Importante sobre Supabase
+
+- El archivo `.env` queda excluido por `.gitignore`: no lo subas al repositorio.
+- La conexión compartida se carga desde `config.public.js`, por lo que cada celular solo necesita crear su cuenta o iniciar sesión.
+- La URL del proyecto y una clave **publishable/anon** son datos públicos de una aplicación web y pueden estar en ese archivo. Nunca agregues una clave `service_role` ni `sb_secret`.
+- Si es la primera vez que preparas la base, ejecuta primero `supabase_schema.sql` y después `supabase_security_migration.sql` en el SQL Editor de Supabase.
+- Antes de publicar, ejecuta `supabase_security_migration.sql` para que cada integrante solo pueda acceder a su propio hogar.
+- En **Authentication → URL Configuration** de Supabase, agrega la dirección final de GitHub Pages como `Site URL` y como `Redirect URL`.
