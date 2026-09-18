@@ -146,7 +146,7 @@ class AppStore {
     this.settings = this.load(STORAGE_KEYS.SETTINGS, { theme: 'light' });
 
     // Si es la primera vez que abre la app, precargar datos de ejemplo
-    if (!this.services || this.services.length === 0) {
+    if (!this.services) {
       this.loadSampleData();
     }
   }
@@ -164,8 +164,10 @@ class AppStore {
   save(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      return true;
     } catch (e) {
       console.error('Error guardando clave:', key, e);
+      return false;
     }
   }
 
@@ -363,6 +365,15 @@ class AppStore {
   }
 
   deleteExpense(id) {
+    const expense = this.expenses.find(e => e.id === id);
+    if (!expense) return false;
+    try {
+      const trash = this.getExpenseTrash().filter(item => item.expense.id !== id);
+      localStorage.setItem(this.expenseTrashKey(), JSON.stringify([{ expense, deletedAt: new Date().toISOString() }, ...trash]));
+    } catch {
+      window.app?.showToast('No se pudo guardar una copia recuperable. El gasto no se eliminó.', 'danger');
+      return false;
+    }
     this.expenses = this.expenses.filter(e => e.id !== id);
     this.save(STORAGE_KEYS.EXPENSES, this.expenses);
     if (window.supabaseService) {
@@ -645,9 +656,14 @@ class AppStore {
   // Sincronizar todos los datos desde Supabase para el hogar activo
   async syncWithSupabase(householdId) {
     if (!window.supabaseService || !householdId) return false;
+    const status = window.saveStatus;
+    if (status?.read().length || status?.running || status?.error) return false;
+    const revision = status?.revision;
 
     const data = await window.supabaseService.fetchHouseholdData(householdId);
     if (!data) return false;
+    if (window.supabaseService.currentHousehold?.id !== householdId ||
+        status?.read().length || status?.running || status?.revision !== revision) return false;
 
     this.services = data.services;
     this.payments = data.payments;
@@ -663,6 +679,29 @@ class AppStore {
     this.save(STORAGE_KEYS.CARD_PAYMENTS, this.cardPayments);
     this.save(STORAGE_KEYS.BUDGETS, this.budgets);
 
+    return true;
+  }
+
+  expenseTrashKey() {
+    return 'mihogar_expense_trash:' + (window.saveStatus?.scope() || 'local');
+  }
+
+  getExpenseTrash() {
+    return this.load(this.expenseTrashKey(), []);
+  }
+
+  restoreExpense(id) {
+    const trash = this.getExpenseTrash();
+    const item = trash.find(entry => entry.expense.id === id);
+    if (!item || this.expenses.some(expense => expense.id === id)) return false;
+    const restored = [item.expense, ...this.expenses];
+    if (!this.save(STORAGE_KEYS.EXPENSES, restored)) {
+      window.app?.showToast('No hay espacio para restaurar el gasto. Sigue en la papelera.', 'danger');
+      return false;
+    }
+    this.expenses = restored;
+    window.supabaseService?.upsertExpense(item.expense);
+    this.save(this.expenseTrashKey(), trash.filter(entry => entry !== item));
     return true;
   }
 

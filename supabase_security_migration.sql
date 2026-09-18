@@ -152,7 +152,7 @@ BEGIN
 
     INSERT INTO public.households (name, invite_code, created_by)
     VALUES (v_name, v_code, v_user_id)
-    ON CONFLICT (invite_code) DO NOTHING
+    ON CONFLICT ON CONSTRAINT households_invite_code_key DO NOTHING
     RETURNING * INTO v_household;
 
     EXIT WHEN FOUND;

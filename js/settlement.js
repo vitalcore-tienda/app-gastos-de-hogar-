@@ -12,91 +12,44 @@ class SettlementManager {
    */
   calculate(yearMonth) {
     const expenses = window.store.getExpenses(yearMonth) || [];
-    
-    // 1. Recopilar todos los gastos y agrupar por pagador
-    const memberPaid = {};
-    let totalSpent = 0;
-
-    expenses.forEach(e => {
-      const payer = (e.paidBy && e.paidBy.trim()) || 'Yo';
-      const amt = Number(e.amount || 0);
-      memberPaid[payer] = (memberPaid[payer] || 0) + amt;
-      totalSpent += amt;
-    });
-
-    const members = Object.keys(memberPaid);
-    
-    // Si no hay gastos o hay 0 miembros
-    if (totalSpent === 0 || members.length === 0) {
-      return {
-        totalSpent: 0,
-        memberCount: 0,
-        fairShare: 0,
-        balances: [],
-        transfers: []
-      };
-    }
-
-    // 2. Calcular cuota justa por persona (Equitativa)
-    const memberCount = members.length;
-    const fairShare = memberCount > 0 ? totalSpent / memberCount : 0;
-
-    // 3. Determinar balance neto de cada miembro: (Pagado - Cuota Justa)
-    // Positivo (+) => Puso de más, le deben reintegrar.
-    // Negativo (-) => Puso de menos, debe pagar.
-    const balances = members.map(name => {
-      const paid = memberPaid[name] || 0;
-      const net = paid - fairShare;
-      return {
-        name,
-        paid,
-        net: Math.round(net * 100) / 100,
-        status: net > 1 ? 'creditor' : net < -1 ? 'debtor' : 'settled'
-      };
-    });
-
-    // 4. Algoritmo de Compensación de Deudas (Simplificación de transferencias)
-    const creditors = balances
-      .filter(b => b.net > 0.5)
-      .map(b => ({ name: b.name, amount: b.net }))
-      .sort((a, b) => b.amount - a.amount);
-
-    const debtors = balances
-      .filter(b => b.net < -0.5)
-      .map(b => ({ name: b.name, amount: -b.net }))
-      .sort((a, b) => b.amount - a.amount);
-
-    const transfers = [];
-    let cIdx = 0;
-    let dIdx = 0;
-
-    while (cIdx < creditors.length && dIdx < debtors.length) {
-      const creditor = creditors[cIdx];
-      const debtor = debtors[dIdx];
-      const settlementAmt = Math.min(creditor.amount, debtor.amount);
-
-      if (settlementAmt > 0.5) {
-        transfers.push({
-          from: debtor.name,
-          to: creditor.name,
-          amount: Math.round(settlementAmt)
-        });
-      }
-
-      creditor.amount -= settlementAmt;
-      debtor.amount -= settlementAmt;
-
-      if (creditor.amount < 0.5) cIdx++;
-      if (debtor.amount < 0.5) dIdx++;
-    }
-
-    return {
-      totalSpent,
-      memberCount,
-      fairShare: Math.round(fairShare),
-      balances: balances.sort((a, b) => b.net - a.net),
-      transfers
+    const people = new Map();
+    let total = 0;
+    let unassigned = 0;
+    const person = name => {
+      if (!people.has(name)) people.set(name, { name, paid: 0, owed: 0 });
+      return people.get(name);
     };
+    for (const expense of expenses) {
+      const cents = Math.round(Number(expense.amount) * 100);
+      const shares = expense.split?.participants;
+      if (!Array.isArray(shares) || !shares.length ||
+          shares.some(p => !p.name || !Number.isSafeInteger(p.cents) || p.cents < 0) ||
+          shares.reduce((sum, p) => sum + p.cents, 0) !== cents) {
+        unassigned++;
+        continue;
+      }
+      person(expense.paidBy || 'Yo').paid += cents;
+      for (const share of shares) person(share.name).owed += share.cents;
+      total += cents;
+    }
+    const balances = [...people.values()].map(p => ({
+      name: p.name, paid: p.paid / 100, owed: p.owed / 100,
+      net: (p.paid - p.owed) / 100,
+      status: p.paid > p.owed ? 'creditor' : p.paid < p.owed ? 'debtor' : 'settled'
+    })).sort((a, b) => b.net - a.net);
+    const creditors = balances.filter(p => p.net > 0).map(p => ({ name: p.name, cents: Math.round(p.net * 100) }));
+    const debtors = balances.filter(p => p.net < 0).map(p => ({ name: p.name, cents: Math.round(-p.net * 100) }));
+    const transfers = [];
+    let c = 0, d = 0;
+    while (c < creditors.length && d < debtors.length) {
+      const cents = Math.min(creditors[c].cents, debtors[d].cents);
+      transfers.push({ from: debtors[d].name, to: creditors[c].name, amount: cents / 100 });
+      creditors[c].cents -= cents;
+      debtors[d].cents -= cents;
+      if (!creditors[c].cents) c++;
+      if (!debtors[d].cents) d++;
+    }
+    return { totalSpent: total / 100, memberCount: people.size, balances, transfers, unassigned };
   }
 
   /**
@@ -134,7 +87,7 @@ class SettlementManager {
           </div>
           <div class="settlement-empty">
             <span class="settlement-empty-icon">⚖️</span>
-            <p>Se necesitan gastos registrados de al menos 2 integrantes para calcular reintegros.</p>
+            <p>Agregá un gasto con participantes para calcular el reparto. ${data.unassigned ? `${data.unassigned} gasto(s) sin reparto: editalos para incluirlos.` : ''}</p>
           </div>
         </div>
       `;
@@ -147,7 +100,7 @@ class SettlementManager {
             <span class="settlement-icon">🤝</span>
             <div>
               <h4>Liquidación de Cuentas (Splitwise Familiar)</h4>
-              <p>Total Gastado: <strong>$${data.totalSpent.toLocaleString('es-AR')}</strong> • Cuota equitativa: <strong>$${data.fairShare.toLocaleString('es-AR')}</strong>/persona</p>
+              <p>Total Gastado: <strong>$${data.totalSpent.toLocaleString('es-AR')}</strong> • Según el reparto de cada gasto</p>
             </div>
           </div>
           <button class="btn btn-sm btn-outline-whatsapp" onclick="window.settlementManager.shareWhatsApp('${yearMonth}')" title="Enviar balances al grupo familiar">
@@ -155,6 +108,7 @@ class SettlementManager {
           </button>
         </div>
 
+        <p>${data.unassigned ? `${data.unassigned} gasto(s) sin reparto, excluidos del cálculo. Editalos para incluirlos.` : 'Todos los gastos tienen reparto.'}</p>
         <!-- Grid de Balances Netos de Cada Miembro -->
         <div class="settlement-members-grid">
           ${data.balances.map(b => {
@@ -174,7 +128,7 @@ class SettlementManager {
                   <span class="member-avatar">${b.name.charAt(0).toUpperCase()}</span>
                   <div class="member-name-area">
                     <strong class="member-name">${this.escapeHtml(b.name)}</strong>
-                    <span class="member-paid-total">Aportó: $${b.paid.toLocaleString('es-AR')}</span>
+                    <span class="member-paid-total">Pagó: ${b.paid.toLocaleString('es-AR')} · Le corresponde: ${b.owed.toLocaleString('es-AR')}</span>
                   </div>
                 </div>
                 <div class="member-net-badge">
@@ -227,7 +181,7 @@ class SettlementManager {
     let msg = `🤝 *LIQUIDACIÓN DE CUENTAS FAMILIARES*\n`;
     msg += `📅 Mes: ${yearMonth}\n`;
     msg += `💰 Gasto Total Compartido: *$${data.totalSpent.toLocaleString('es-AR')}*\n`;
-    msg += `👤 Cuota Justa por Persona: *$${data.fairShare.toLocaleString('es-AR')}*\n\n`;
+    msg += `Reparto según cada gasto. ${data.unassigned} gasto(s) sin reparto excluidos.\n\n`;
     
     msg += `📊 *Balances Individuales:*\n`;
     data.balances.forEach(b => {

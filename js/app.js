@@ -57,6 +57,7 @@ class AppController {
       // Verificar si el usuario tiene un hogar asignado
       const household = await window.supabaseService.getUserHousehold(user.id);
       if (household) {
+        void window.saveStatus?.flush();
         // Hogar activo
         if (houseBadge) {
           houseBadge.style.display = 'flex';
@@ -204,6 +205,7 @@ class AppController {
   // ==================== ACTUALIZACIÓN GLOBAL ====================
 
   refreshAll() {
+    window.saveStatus?.render();
     const ym = this.yearMonthKey;
     window.servicesManager.render(ym);
     window.expensesManager.render(ym);
@@ -597,6 +599,12 @@ class AppController {
         notes: document.getElementById('expenseNotes').value.trim()
       };
 
+      try {
+        expenseData.split = window.expenseSplit.read();
+      } catch (error) {
+        this.showToast(error.message, 'warning');
+        return;
+      }
       window.store.saveExpense(expenseData);
       this.closeAllModals();
       this.refreshAll();

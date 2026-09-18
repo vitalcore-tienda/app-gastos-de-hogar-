@@ -219,6 +219,9 @@ class SupabaseService {
         this.client.from('budgets').select('*').eq('household_id', householdId)
       ]);
 
+      const readError = [srvRes, payRes, expRes, crdRes, crdPayRes, bdgRes].find(result => result.error);
+      if (readError) throw readError.error;
+
       // Mapear pagos a formato de diccionario payments[serviceId_yearMonth]
       const paymentsObj = {};
       (payRes.data || []).forEach(p => {
@@ -288,7 +291,8 @@ class SupabaseService {
         date: e.date,
         notes: e.notes,
         paidBy: e.paid_by || e.created_by || 'Yo',
-        createdBy: e.created_by
+        createdBy: e.created_by,
+        split: e.split || null
       }));
 
       return {
@@ -320,18 +324,20 @@ class SupabaseService {
         client_code: service.clientCode,
         notes: service.notes,
         auto_debit: service.autoDebit
-      });
+      }).throwOnError();
     } catch (e) {
       console.error('Error guardando servicio en Supabase:', e);
+      throw e;
     }
   }
 
   async deleteService(serviceId) {
     if (!this.client || !this.currentHousehold) return;
     try {
-      await this.client.from('services').delete().eq('id', serviceId).eq('household_id', this.currentHousehold.id);
+      await this.client.from('services').delete().eq('id', serviceId).eq('household_id', this.currentHousehold.id).throwOnError();
     } catch (e) {
       console.error('Error eliminando servicio en Supabase:', e);
+      throw e;
     }
   }
 
@@ -349,9 +355,10 @@ class SupabaseService {
         method: details.method,
         receipt_note: details.receiptNote,
         paid_by: this.currentUser ? this.currentUser.email : 'Usuario'
-      });
+      }).throwOnError();
     } catch (e) {
       console.error('Error guardando pago en Supabase:', e);
+      throw e;
     }
   }
 
@@ -359,9 +366,10 @@ class SupabaseService {
     if (!this.client || !this.currentHousehold) return;
     try {
       const paymentId = `pay_${serviceId}_${yearMonth}`;
-      await this.client.from('payments').delete().eq('id', paymentId).eq('household_id', this.currentHousehold.id);
+      await this.client.from('payments').delete().eq('id', paymentId).eq('household_id', this.currentHousehold.id).throwOnError();
     } catch (e) {
       console.error('Error eliminando pago en Supabase:', e);
+      throw e;
     }
   }
 
@@ -377,19 +385,22 @@ class SupabaseService {
         date: expense.date,
         notes: expense.notes,
         paid_by: expense.paidBy || (this.currentUser ? this.currentUser.user_metadata?.full_name || this.currentUser.email : 'Yo'),
-        created_by: this.currentUser ? this.currentUser.email : 'Usuario'
-      });
+        created_by: expense.createdBy || (this.currentUser ? this.currentUser.email : 'Usuario'),
+        split: expense.split || null
+      }).throwOnError();
     } catch (e) {
       console.error('Error guardando gasto en Supabase:', e);
+      throw e;
     }
   }
 
   async deleteExpense(expenseId) {
     if (!this.client || !this.currentHousehold) return;
     try {
-      await this.client.from('expenses').delete().eq('id', expenseId).eq('household_id', this.currentHousehold.id);
+      await this.client.from('expenses').delete().eq('id', expenseId).eq('household_id', this.currentHousehold.id).throwOnError();
     } catch (e) {
       console.error('Error eliminando gasto en Supabase:', e);
+      throw e;
     }
   }
 
@@ -409,18 +420,20 @@ class SupabaseService {
         start_year_month: card.startYearMonth,
         due_day: card.dueDay,
         notes: card.notes
-      });
+      }).throwOnError();
     } catch (e) {
       console.error('Error guardando tarjeta en Supabase:', e);
+      throw e;
     }
   }
 
   async deleteCard(cardId) {
     if (!this.client || !this.currentHousehold) return;
     try {
-      await this.client.from('cards').delete().eq('id', cardId).eq('household_id', this.currentHousehold.id);
+      await this.client.from('cards').delete().eq('id', cardId).eq('household_id', this.currentHousehold.id).throwOnError();
     } catch (e) {
       console.error('Error eliminando tarjeta en Supabase:', e);
+      throw e;
     }
   }
 
@@ -437,9 +450,10 @@ class SupabaseService {
         paid_date: details.paidDate,
         method: details.method,
         receipt_note: details.receiptNote
-      });
+      }).throwOnError();
     } catch (e) {
       console.error('Error guardando pago de cuota en Supabase:', e);
+      throw e;
     }
   }
 
@@ -447,9 +461,10 @@ class SupabaseService {
     if (!this.client || !this.currentHousehold) return;
     try {
       const payId = `cardpay_${cardId}_${yearMonth}`;
-      await this.client.from('card_payments').delete().eq('id', payId).eq('household_id', this.currentHousehold.id);
+      await this.client.from('card_payments').delete().eq('id', payId).eq('household_id', this.currentHousehold.id).throwOnError();
     } catch (e) {
       console.error('Error eliminando pago de cuota en Supabase:', e);
+      throw e;
     }
   }
 
@@ -462,9 +477,10 @@ class SupabaseService {
         amount: Number(amount),
         is_default: isDefault,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'household_id,year_month' });
+      }, { onConflict: 'household_id,year_month' }).throwOnError();
     } catch (e) {
       console.error('Error guardando presupuesto en Supabase:', e);
+      throw e;
     }
   }
 

@@ -26,6 +26,7 @@ class ExpensesManager {
   }
 
   render(yearMonth) {
+    this.renderTrash();
     const listContainer = document.getElementById('expensesList');
     const emptyState = document.getElementById('expensesEmptyState');
     if (!listContainer) return;
@@ -106,6 +107,7 @@ class ExpensesManager {
               </div>
               <div class="expense-meta">
                 <span>📅 ${item.date}</span>
+                <span>${item.split?.participants?.length ? 'Repartido entre ' + item.split.participants.length + ' persona(s)' : 'Sin reparto: editar para asignarlo'}</span>
                 <span>•</span>
                 <span>${item.category}</span>
                 ${item.notes ? `<span>•</span><span class="expense-notes">${this.escapeHtml(item.notes)}</span>` : ''}
@@ -181,13 +183,13 @@ class ExpensesManager {
     let members = [];
     if (window.supabaseService && window.supabaseService.currentHousehold) {
       const dbMembers = await window.supabaseService.getHouseholdMembers(window.supabaseService.currentHousehold.id);
-      members = dbMembers.map(m => m.user_email.split('@')[0]);
+      members = dbMembers.map(m => m.user_email).filter(Boolean);
     }
 
     if (members.length === 0) {
       members = ['Yo', 'Papá', 'Mamá'];
-    } else if (!members.includes('Yo')) {
-      members.unshift('Yo');
+    } else if (selectedPayer === 'Yo') {
+      selectedPayer = window.supabaseService.currentUser?.email || members[0];
     }
 
     let isCustom = false;
@@ -241,6 +243,7 @@ class ExpensesManager {
     document.getElementById('expenseNotes').value = '';
 
     await this.populateMembersDropdown('Yo');
+    window.expenseSplit.open();
 
     window.app.openModal('expenseModal');
   }
@@ -258,15 +261,41 @@ class ExpensesManager {
     document.getElementById('expenseNotes').value = expense.notes || '';
 
     await this.populateMembersDropdown(expense.paidBy || 'Yo');
+    window.expenseSplit.open(expense.split || null);
 
     window.app.openModal('expenseModal');
   }
 
   deleteExpense(expenseId) {
     if (confirm('¿Eliminar este gasto del registro familiar?')) {
-      window.store.deleteExpense(expenseId);
+      if (!window.store.deleteExpense(expenseId)) return;
       window.app.refreshAll();
-      window.app.showToast('Gasto eliminado', 'success');
+      window.app.showToast('Gasto enviado a la papelera. Podés recuperarlo desde Gastos.', 'success');
+    }
+  }
+  renderTrash() {
+    const container = document.getElementById('expenseTrashList');
+    if (!container) return;
+    container.replaceChildren();
+    const items = window.store.getExpenseTrash();
+    if (!items.length) container.textContent = 'No hay gastos eliminados.';
+    for (const { expense } of items) {
+      const row = document.createElement('div');
+      row.className = 'trash-row';
+      const label = document.createElement('span');
+      label.textContent = expense.title + ' · $' + Number(expense.amount).toLocaleString('es-AR') + ' · ' + expense.date;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-secondary';
+      button.textContent = 'Restaurar';
+      button.addEventListener('click', () => {
+        if (window.store.restoreExpense(expense.id)) {
+          window.app.refreshAll();
+          window.app.showToast('Gasto restaurado con su fecha original.', 'success');
+        }
+      });
+      row.append(label, button);
+      container.append(row);
     }
   }
 }
